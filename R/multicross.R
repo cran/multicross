@@ -12,7 +12,7 @@
 #' X3 = MASS::mvrnorm(10,rep(0,4),diag(3,4),tol=1e-6, empirical=FALSE, EISPACK=FALSE)
 #' mcm(list(X1,X2,X3),0.05)
 #' @import nbpMatching
-#' @import MASS
+#' @import MASS 
 #' @import crossmatch
 mcm <- function(data_list,level) ## Function 1
 {
@@ -88,7 +88,7 @@ mcm <- function(data_list,level) ## Function 1
   return(noquote(c(lowerpval,dec)))
 }
 
-#' Creates the null covariance matrix for Mmcm, corresponding to the scenario when all K distributions are the same
+#' Creates the null covariance matrix for mmcm, corresponding to the scenario when all K distributions are the same
 #' @param nvec is a vector containing the sizes of the K different classes
 #' @return The inputs for the Multisample Mahalanobis Crossmatch Test
 #' @import nbpMatching
@@ -169,6 +169,108 @@ mhcccreate<-function(nvec)
     }
   }
   return(list(as.matrix(mu1),sig1,as.matrix(muv),bigsig))
+}
+
+#' Split a data frame or matrix into subsets based on a particular categorical variable
+#' @param obj is a data frame or matrix to be split into subsets, divided by the categorical variable
+#' @param by is a character-string that specifies the columns that need to be subsetted 
+#' @return A list containing the subsetted data sets. The names of the list corresponds to the value of the subsetted list
+split_mat <- function (obj, by) {
+  # Get the set of possible values
+  column.levels <-if (is.factor(obj[, by])) {
+    levels(obj[, by])
+  } else {
+    unique(obj[, by])
+  }
+  # A list used to store each individual data.frame
+  res <- list()
+  # Iterate through all possible values and store each subset in a separate
+  # entry in the list
+  for (val in column.levels) {
+    # Determine which rows match this value
+    hits <- obj[, by] == val
+    # Store data set temporarily in a local value
+    data.set <- obj[hits, ]
+    # Assign levels to the column. This adds levels to string data.
+    levels(data.set[, by]) <- column.levels
+    # Store data set in list
+    res[[val]] <- data.set
+  }
+  
+  # Return list
+  res
+}
+
+#' This function takes an scRNAseq counts matrix as an input (cells in rows x genes in cols) and outputs a matrix of cells x 3 covariates (number of genes detected, sequencing depth and mitochondrial gene expression). This covariate matrix can then be used to match cells and perform stratified permutation.
+#' @param datamat is cells x genes matrix from an scRNAseq experiment. Could be non-UMI or UMI counts.
+#' @return A list of scRNAseq matrices subsetted by KEGG Pathways, so list[[n]] corresponds to the n^th pathway.
+#' @export
+#' @import Seurat
+#' @importFrom  Matrix rowSums
+matchpar <- function(datamat) {
+  library_size <- rowSums(datamat)
+  genes_detected <- apply(datamat, 1, function(x) length(x[x>0]))
+  mito.genes = grep(pattern = "^MT-", x = colnames(x = datamat), value = TRUE)
+  percent.mito <- Matrix::rowSums(datamat[,mito.genes])/Matrix::rowSums(datamat)
+  d1 <- cbind(library_size,genes_detected)
+  d2 <- cbind(d1,percent.mito)
+  return(d2)
+}
+
+#' This function takes an scRNAseq counts matrix as an input (cells in rows x genes in cols) and outputs a list of cells x pathway matrices
+#' @param datamat is cells x genes matrix from an scRNAseq experiment. Could be non-UMI or UMI counts.
+#' @param orgsm specifies whether the species is mouse ("Mm"), human ("Hs) or C. elegans ("Ce").
+#' @return A list of scRNAseq matrices subsetted by KEGG Pathways, so list[[n]] corresponds to the n^th pathway.
+#' @export
+#' @import org.Hs.eg.db
+#' @import org.Mm.eg.db
+#' @import org.Ce.eg.db
+#' @importFrom  AnnotationDbi mappedkeys
+scPath <- function(datamat, orgsm) {
+  if(orgsm=="Hs")  { 
+    kegg <- org.Hs.egPATH2EG 
+    x <- org.Hs.egSYMBOL
+  }
+  if(orgsm=="Mm")  { 
+    kegg <- org.Mm.egPATH2EG
+    x <- org.Mm.egSYMBOL
+  }
+  if(orgsm=="Ce")  { 
+    kegg <- org.Ce.egPATH2EG
+    x <- org.Ce.egSYMBOL
+  }
+  mapped <- AnnotationDbi::mappedkeys(kegg)
+  kegg2 <- as.list(kegg[mapped])
+  ## kegg2 is a list where each [] index is a pathway and [[]] indices are genes, all in numeric/ID form
+  KEGGList <- matrix(as.numeric(unlist(kegg2))) #Extract a List of all genes (>16K) which are functionally annotated in KEGG
+  sums <- c()
+  for (i in 1:length(kegg2)) { sums[i] <- length(kegg2[[i]])}
+  pathnames <- c()
+  for (i in 1:length(kegg2)) {
+    pathnames[i] <- list(rep((names(kegg2)[i]),sums[i]))
+  }
+  pathlist <- matrix(unlist(pathnames))
+  
+  KEGGMap <- as.data.frame(cbind(pathlist,KEGGList))
+  colnames(KEGGMap) <- c("Pathway ID","Gene Entrez ID")
+  
+  mapped_genes <- AnnotationDbi::mappedkeys(x)
+  x2 <- as.list(x[mapped_genes])
+  entrezID <- names(x2)
+  kegg_gene <- matrix(unlist(x2))
+  RefID <- as.data.frame(cbind(entrezID,kegg_gene))
+  ##RefID has two cols, first with Entrez IDs, second with the corresponding gene names
+  match_genes <- RefID[match(KEGGMap$`Gene Entrez ID`,RefID$entrezID),2]
+  KEGGMap2 <- cbind(KEGGMap,match_genes) #KEGGMap2 contains Pathway ID, Gene Entrez ID, Gene Name
+  
+  Gene_Path <- split_mat(KEGGMap2,"Pathway ID")
+  #Gene_Path is a sub-setted list of KEGGMap 2 with length 229 (# of pathways)
+  ## Now should be able to subset sc Matrix using Gene_Path[[i]]$match_genes
+  data_bypath <- c()
+  for (i in 1:length(Gene_Path)) {
+    data_bypath[[i]] <- datamat[,intersect(colnames(datamat),Gene_Path[[i]]$match_genes)]
+  }
+  return(data_bypath)
 }
 
 
@@ -252,8 +354,27 @@ mmcm<-function(data_list,level)
   return(noquote(c(upperpval2,decmhcc2)))
 }
 
+#' Given two input matrices with the same number of observations but differrent number of variables, this function returns the largest canonical correlation between variables of matrix 1 (X) and those of matrix 2 (Y).
+#' @param X is a data matrix with observations as rows and features/genes as columns.
+#' @param Y is a data matrix with observations as rows (same observations as X) and a different set of features/genes as columns.
+#' @return The largest canonical correlation between X and Y as described in <https://ncss-wpengine.netdna-ssl.com/wp-content/themes/ncss/pdf/Procedures/NCSS/Canonical_Correlation.pdf>. 
+#' @export
+#' @import MASS
+#' @importFrom  stats cor
+multigene <- function(X,Y) {
+  X <- X[,colSums(X != 0) != 0]
+  Y <- Y[,colSums(Y != 0) != 0]
+  Rxx = stats::cor(X,X, method="spearman")
+  Ryy = stats::cor(Y,Y, method="spearman")
+  Rxy = stats::cor(X,Y, method="spearman")
+  Ryx = stats::cor(Y,X, method="spearman")
+  C = MASS::ginv(Ryy) %*% Ryx %*% MASS::ginv(Rxx) %*% Rxy
+  S = svd(C)
+  corcan <- sqrt(S$d[1])
+  return (corcan)
+}
 
-#' When the MCM/MMCM tests reject the null, class sselection can be performed to determine which of the K classes are the likely contributors for rejection
+#' When the MCM/MMCM tests reject the null, class selection can help determine which of the K classes are the likely contributors for rejection
 #' @param data_list is list of multifeature matrices corresponding to the K different classes, so each element of the list is a matrix, for a total of K matrices.
 #' @param level is the cutoff value (alpha) for hypothesis testing
 #' @return A table of pairwise comparisons among the K classes, to further probe which class influences the rejection of the null the most. No p-value adjustment is made to these reported p-values

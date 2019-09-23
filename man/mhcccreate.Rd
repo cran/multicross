@@ -2,7 +2,7 @@
 % Please edit documentation in R/multicross.R
 \name{mhcccreate}
 \alias{mhcccreate}
-\title{Creates the null covariance matrix for Mmcm, corresponding to the scenario when all K distributions are the same}
+\title{Creates the null covariance matrix for mmcm, corresponding to the scenario when all K distributions are the same}
 \usage{
 mhcccreate(nvec)
 }
@@ -13,5 +13,5 @@ mhcccreate(nvec)
 The inputs for the Multisample Mahalanobis Crossmatch Test
 }
 \description{
-Creates the null covariance matrix for Mmcm, corresponding to the scenario when all K distributions are the same
+Creates the null covariance matrix for mmcm, corresponding to the scenario when all K distributions are the same
 }

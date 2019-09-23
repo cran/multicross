@@ -2,7 +2,7 @@
 % Please edit documentation in R/multicross.R
 \name{select_class}
 \alias{select_class}
-\title{When the MCM/MMCM tests reject the null, class sselection can be performed to determine which of the K classes are the likely contributors for rejection}
+\title{When the MCM/MMCM tests reject the null, class selection can help determine which of the K classes are the likely contributors for rejection}
 \usage{
 select_class(data_list, level)
 }
@@ -15,7 +15,7 @@ select_class(data_list, level)
 A table of pairwise comparisons among the K classes, to further probe which class influences the rejection of the null the most. No p-value adjustment is made to these reported p-values
 }
 \description{
-When the MCM/MMCM tests reject the null, class sselection can be performed to determine which of the K classes are the likely contributors for rejection
+When the MCM/MMCM tests reject the null, class selection can help determine which of the K classes are the likely contributors for rejection
 }
 \examples{
 # Simulation Example when the user wants to test whether K=3 multivariate distributions are equal:
