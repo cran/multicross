@@ -1,12 +1,10 @@
-45de4509b3159d18773658725db63dbf *DESCRIPTION
-1e828765fb47f25c0def1fe3f7a40b8b *NAMESPACE
-6df52c91c4a9b974aefff0a431e786a9 *R/multicross.R
-aa4494428bc869c00966e91fdffdf238 *man/matchpar.Rd
+b273669a9a8409d51bf0550464b82686 *DESCRIPTION
+6090e45caba37d7280dd5d14add79a88 *NAMESPACE
+9067a6be28b0325ced7481a8ae51cd61 *R/multicross.R
 aee2b455b94bed6c94e5c2dc117837ad *man/mcm.Rd
 7d28131afe17ec0d47d4126971129112 *man/mhcccreate.Rd
 909eea4a0eca562abcbb0f66f646620c *man/mhccexecutelong.Rd
 d61165d8514726473cb01b9bbcf2d2e4 *man/mmcm.Rd
 96055f33d703dcc7a981b616f291e430 *man/multigene.Rd
-e78f4010511465f8a8a39c4ded030b9a *man/scPath.Rd
 e366dfb4804a4ff261500735a61be0af *man/select_class.Rd
 4dee1a378fa043620a82dc0545948abe *man/split_mat.Rd
